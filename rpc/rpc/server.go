@@ -78,7 +78,7 @@ func (s *Server) Process(conn net.Conn) {
 	t := f.Type()
 	if t.NumIn() != len(rpcData.Args) {
 		log.Println("Err NumIn Lens Not Equal")
-
+		return
 	}
 	inArgs := make([]reflect.Value, 0, len(rpcData.Args))
 	for i, arg := range rpcData.Args {
@@ -87,12 +87,12 @@ func (s *Server) Process(conn net.Conn) {
 			log.Println("Err parameter Type Mismatch,need:", t.In(i).Kind(), "but:", v.Type().Kind())
 			return
 		}
-		inArgs = append(inArgs)
+		inArgs = append(inArgs, v)
 	}
 	out := f.Call(inArgs)
 	outArgs := make([]interface{}, 0, len(out))
 	for _, o := range out {
-		outArgs = append(outArgs, o)
+		outArgs = append(outArgs, o.Interface())
 	}
 	responRPCData := NewRPCData(rpcData.Name, outArgs)
 	bytes, err := responRPCData.Encode()
