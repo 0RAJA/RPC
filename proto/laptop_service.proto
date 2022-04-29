@@ -17,8 +17,25 @@ message SearchLaptopRequest{Filter filter = 1;}
 
 message SearchLaptopResponse{Laptop laptop = 1;}
 
-//定义一个一元RPC
+message UploadLaptopRequest{
+  oneof data {
+    ImageInfo info = 1; // image info
+    bytes chunk_data = 2; // chunk data
+  };
+}
+
+message ImageInfo {
+  string laptop_id = 1; //电脑ID
+  string image_type = 2; //图像类型
+}
+
+message UploadLaptopResponse{
+  string id = 1; //图片ID
+  uint64 size = 2; //图片大小
+}
+
 service LaptopService {
-  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){};
-  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){};
+  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){};//一元RPC
+  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){};//服务器流式RPC
+  rpc UploadLaptop(stream UploadLaptopRequest) returns (UploadLaptopResponse){};//客户端流式RPC
 }

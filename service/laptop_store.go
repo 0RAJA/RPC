@@ -6,9 +6,6 @@ import (
 	"github.com/0RAJA/RPC/pb"
 	"github.com/jinzhu/copier"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-	"log"
 	"sync"
 )
 
@@ -62,14 +59,8 @@ func (i *InMemoryLaptopStore) Search(ctx context.Context, filter *pb.Filter, fou
 	defer i.mutex.RUnlock()
 	for _, laptop := range i.data {
 		if isQuality(filter, laptop) {
-			switch ctx.Err() {
-			case context.DeadlineExceeded:
-				log.Println("DeadlineExceeded")
-				return status.Error(codes.DeadlineExceeded, "deadline exceeded")
-			case context.Canceled:
-				log.Println("Canceled")
-				return status.Errorf(codes.Canceled, "canceled")
-			default:
+			if err := contextErr(ctx); err != nil {
+				return err
 			}
 			res, err := deepCopy(laptop)
 			if err != nil {
@@ -87,6 +78,7 @@ func isQuality(filter *pb.Filter, laptop *pb.Laptop) bool {
 	return filter.GetMaxPriceUsd() >= laptop.GetPriceUsd() && filter.GetMinCpuCores() <= laptop.GetCpu().GetNumberCores() && filter.GetMinCpuGhz() <= laptop.GetCpu().GetMinGhz() && toBit(filter.GetMinRam()) <= toBit(laptop.GetRam())
 }
 
+//转哈不同单位到bit
 func toBit(memory *pb.Memory) (ret uint64) {
 	ret = memory.Value
 	switch memory.Unit {

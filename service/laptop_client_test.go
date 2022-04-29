@@ -1,7 +1,9 @@
 package service_test
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
 	"github.com/0RAJA/RPC/pb"
 	"github.com/0RAJA/RPC/sample"
 	"github.com/0RAJA/RPC/serializer"
@@ -12,6 +14,8 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -27,7 +31,8 @@ func checkLaptopSame(t *testing.T, laptop1, laptop2 *pb.Laptop) {
 //测试从客户端请求RPC
 func TestClientCreateLaptop(t *testing.T) {
 	t.Parallel()
-	laptopServer, addr := startTestLaptopServer(t, service.NewInMemoryLaptopStore())
+	laptopStore := service.NewInMemoryLaptopStore()
+	addr := startTestLaptopServer(t, laptopStore, nil)
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	require.NoError(t, err)
 	LaptopClient := pb.NewLaptopServiceClient(conn)
@@ -38,21 +43,21 @@ func TestClientCreateLaptop(t *testing.T) {
 	require.Equal(t, res.Id, sampleLaptop.Id)
 
 	//测试Store是否存储
-	other, err := laptopServer.Store().Find(sampleLaptop.Id)
+	other, err := laptopStore.Find(sampleLaptop.Id)
 	require.NoError(t, err)
 	//测试是否相同
 	checkLaptopSame(t, sampleLaptop, other)
 }
 
-//启动测试服务器
-func startTestLaptopServer(t *testing.T, store service.LaptopStore) (*service.LaptopServer, string) {
-	laptopServer := service.NewLaptopServer(store)
+//启动测试服务器返回监听地址
+func startTestLaptopServer(t *testing.T, laptopStore service.LaptopStore, imageStore service.ImageStore) string {
+	laptopServer := service.NewLaptopServer(laptopStore, imageStore)
 	grpcServer := grpc.NewServer()
 	pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
-	listenner, err := net.Listen("tcp", ":0") //随机分配IP
+	listener, err := net.Listen("tcp", ":0") //随机分配IP
 	require.NoError(t, err)
-	go grpcServer.Serve(listenner) //防止阻塞
-	return laptopServer, listenner.Addr().String()
+	go grpcServer.Serve(listener) //防止阻塞
+	return listener.Addr().String()
 }
 
 //测试搜索
@@ -66,7 +71,7 @@ func TestLaptopServer_SearchLaptop(t *testing.T) {
 		MinRam:      &pb.Memory{Value: 8, Unit: pb.Memory_GIGABYTE},
 	}
 
-	_, addr := startTestLaptopServer(t, service.NewInMemoryLaptopStore())
+	addr := startTestLaptopServer(t, service.NewInMemoryLaptopStore(), nil)
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	require.NoError(t, err)
 	laptopClient := pb.NewLaptopServiceClient(conn)
@@ -121,4 +126,66 @@ func TestLaptopServer_SearchLaptop(t *testing.T) {
 		require.True(t, exceededIDs[res.Laptop.Id])
 	}
 	require.Equal(t, found, len(exceededIDs))
+}
+
+//测试上传图片
+func TestClientUploadImage(t *testing.T) {
+	t.Parallel()
+
+	testImageFolder := "/home/raja/workspace/go/src/RPC/img"
+	laptopStore := service.NewInMemoryLaptopStore()
+	imageStore := service.NewDiskImageStore(testImageFolder, 1<<20)
+	laptop := sample.NewLaptop()
+	err := laptopStore.Save(laptop)
+	require.NoError(t, err)
+
+	serverAddr := startTestLaptopServer(t, laptopStore, imageStore)
+	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	require.NoError(t, err)
+	laptopClient := pb.NewLaptopServiceClient(conn)
+	imagePath := "/home/raja/workspace/go/src/RPC/tmp/test.jpg"
+
+	file, err := os.Open(imagePath)
+	require.NoError(t, err)
+	defer file.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stream, err := laptopClient.UploadLaptop(ctx)
+	require.NoError(t, err)
+	imageType := filepath.Ext(imagePath)
+	req := &pb.UploadLaptopRequest{
+		Data: &pb.UploadLaptopRequest_Info{
+			Info: &pb.ImageInfo{
+				LaptopId: laptop.GetId(), ImageType: imageType,
+			},
+		},
+	}
+	err = stream.Send(req)
+	require.NoError(t, err)
+
+	reader := bufio.NewReader(file)
+	buffer := make([]byte, 1024)
+	size := 0 //记录上传文件的总大小
+	for {
+		n, err := reader.Read(buffer)
+		if err == io.EOF {
+			break
+		}
+		size += n
+		require.NoError(t, err)
+		req := &pb.UploadLaptopRequest_ChunkData{ChunkData: buffer[:n]}
+		err = stream.Send(&pb.UploadLaptopRequest{
+			Data: req,
+		})
+		require.NoError(t, err)
+	}
+	rev, err := stream.CloseAndRecv()
+	require.NoError(t, err)
+	require.NotZero(t, rev.Id)
+	require.EqualValues(t, size, rev.GetSize())
+
+	savedImagePath := fmt.Sprintf("%s/%s%s", testImageFolder, rev.GetId(), imageType)
+	require.FileExists(t, savedImagePath)         //判断是否存在
+	require.NoError(t, os.Remove(savedImagePath)) //最终删除
 }
