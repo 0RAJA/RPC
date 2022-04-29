@@ -13,14 +13,14 @@ message CPU {
   string name = 2;
   uint32 number_cores = 3;
   uint32 number_threads = 4;
-  uint32 min_ghz = 5;
-  uint32 max_ghz = 6;
+  double min_ghz = 5;
+  double max_ghz = 6;
 }
 
 message GPU {
   string brand = 1;
   string name = 2;
-  uint32 min_ghz = 3;
-  uint32 max_ghz = 4;
+  double min_ghz = 3;
+  double max_ghz = 4;
   rpc.proto.Memory memory = 5;
 }

@@ -6,4 +6,12 @@ option go_package = "pb";
 option java_package = "com.github.RPC.grpc.protobuf";
 option java_multiple_files = true;
 
-message Filiter
+import "memory_message.proto";
+
+//寻找的computer的条件
+message Filter {
+  double max_price_usd = 1;
+  uint32 min_cpu_cores = 2;
+  double min_cpu_ghz = 3;
+  Memory min_ram = 4;
+}

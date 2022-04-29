@@ -59,7 +59,7 @@ func TestReadProtobufFromBinaryFile(t *testing.T) {
 			if err := ReadProtobufFromBinaryFile(tt.args.filename, tt.args.message); (err != nil) != tt.wantErr {
 				t.Errorf("ReadProtobufFromBinaryFile() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			require.Equal(t, tt.args.message.String(), laptop.String())
+			require.Equal(t, tt.args.message.Id, laptop.Id)
 		})
 	}
 }

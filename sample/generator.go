@@ -28,8 +28,8 @@ func NewCPU() *pb.CPU {
 		Name:          name,
 		NumberCores:   uint32(numSores),
 		NumberThreads: uint32(numThreads),
-		MinGhz:        uint32(minGhz),
-		MaxGhz:        uint32(max_ghz),
+		MinGhz:        minGhz,
+		MaxGhz:        max_ghz,
 	}
 	return cpu
 }
@@ -47,8 +47,8 @@ func NewGPU() *pb.GPU {
 	gpu := &pb.GPU{
 		Brand:  brand,
 		Name:   name,
-		MinGhz: uint32(minGhz),
-		MaxGhz: uint32(maxGhz),
+		MinGhz: minGhz,
+		MaxGhz: maxGhz,
 		Memory: memory,
 	}
 	return gpu

@@ -8,7 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log"
-	"time"
 )
 
 type LaptopServer struct {
@@ -42,7 +41,7 @@ func (laptop *LaptopServer) CreateLaptop(ctx context.Context,
 		req.Laptop.Id = id.String()
 	}
 	//do something with timeout
-	time.Sleep(time.Second * 6)
+	//time.Sleep(time.Second * 6)
 	switch ctx.Err() {
 	case context.DeadlineExceeded:
 		log.Println("DeadlineExceeded")
@@ -64,4 +63,20 @@ func (laptop *LaptopServer) CreateLaptop(ctx context.Context,
 	log.Printf("Save laptop with id:%s\n", req.Laptop.Id)
 	res := &pb.CreateLaptopResponse{Id: req.Laptop.Id}
 	return res, nil
+}
+
+func (laptop *LaptopServer) SearchLaptop(req *pb.SearchLaptopRequest, stream pb.LaptopService_SearchLaptopServer) error {
+	filter := req.Filter
+	log.Println("received filter:", filter)
+
+	if err := laptop.Store().Search(stream.Context(), filter, func(laptop *pb.Laptop) error {
+		if err := stream.Send(&pb.SearchLaptopResponse{Laptop: laptop}); err != nil {
+			return err
+		}
+		log.Println("send Laptop response with id:", laptop.Id)
+		return nil
+	}); err != nil {
+		return status.Errorf(codes.Internal, "unexpected error: %v", err)
+	}
+	return nil
 }

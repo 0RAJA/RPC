@@ -13,7 +13,7 @@ import (
 
 //测试
 func TestLaptopServer_CreateLaptop(t *testing.T) {
-	t.Parallel() //允许并行
+	//t.Parallel() //允许并行
 	type fields struct {
 		Store service.LaptopStore
 	}
