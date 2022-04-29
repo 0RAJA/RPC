@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+import "memory_message.proto";
+
+package rpc.proto;
+
+option go_package = "pb"; //自定义包名
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+message CPU {
+  string brand = 1;
+  string name = 2;
+  uint32 number_cores = 3;
+  uint32 number_threads = 4;
+  uint32 min_ghz = 5;
+  uint32 max_ghz = 6;
+}
+
+message GPU {
+  string brand = 1;
+  string name = 2;
+  uint32 min_ghz = 3;
+  uint32 max_ghz = 4;
+  rpc.proto.Memory memory = 5;
+}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package rpc.proto;
+
+option go_package = "pb";
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+message Screen{
+  //分辨率
+  message Resolution{
+    uint32 width = 1;
+    uint32 height = 2;
+  }
+  //屏幕面板
+  enum Panel{
+    UNKNOWN = 0;
+    IPS = 1;
+    OLED = 2;
+  }
+  float size_inch = 1; //屏幕尺寸
+  Resolution resolution = 2;
+  Panel panel = 3;
+  bool multiTouch = 4; //是否支持多点触控
+}

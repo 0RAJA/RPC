@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package rpc.proto;
+
+option go_package = "pb";
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+import "processor_message.proto";
+import "memory_message.proto";
+import "storage_message.proto";
+import "screen_message.proto";
+import "keyboard_message.proto";
+import  "google/protobuf/timestamp.proto"; //引入时间戳
+
+message Laptop {
+  string id = 1; //唯一标识
+  string brand = 2; //品牌
+  string name = 3; //名字
+  rpc.proto.CPU cpu = 4; //CPU
+  rpc.proto.Memory ram = 5; //内存
+  repeated rpc.proto.GPU gpus = 6; //GPU
+  repeated rpc.proto.Storage storages = 7; //存储
+  rpc.proto.Screen screen = 8; //屏幕
+  rpc.proto.Keyboard keyboard = 9; //键盘
+  oneof weight {//重量
+    double weight_kg = 10;
+    double weight_lb = 11;
+  }
+  double PriceUsd = 12; //价格
+  uint32 release_year = 13; //发布年份
+  google.protobuf.Timestamp update_at = 14; //更新时间
+}

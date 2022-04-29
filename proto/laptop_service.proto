@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package rpc.proto;
+
+option go_package = "pb";
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+import "laptop_message.proto";
+
+message CreateLaptopRequest{
+  Laptop laptop = 1;
+}
+
+message CreateLaptopResponse{
+  string id = 1;
+}
+
+//定义一个一元RPC
+service LaptopService {
+  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse);
+}

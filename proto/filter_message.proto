@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package rpc.proto;
+
+option go_package = "pb";
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+message Filiter

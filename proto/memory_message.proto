@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package rpc.proto;
+
+option go_package = "pb";
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+//内存消息
+message Memory {
+  enum Unit{
+    UNKNOWN = 0;
+    BIT = 1;
+    BYTE = 2;
+    KILOBYTE = 3;
+    MEGABYTE = 4;
+    GIGABYTE = 5;
+    TERABYTE = 6;
+  }
+  uint64 value = 1;//值
+  Unit unit = 2;//单位
+}

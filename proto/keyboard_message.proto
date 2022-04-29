@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package rpc.proto;
+
+option go_package = "pb";
+option java_package = "com.github.RPC.grpc.protobuf";
+option java_multiple_files = true;
+
+//键盘消息
+message Keyboard {
+  //键盘格式
+
+  enum Layout {
+    UNKNOWN = 0;
+    QWERTY = 1;
+    AZERTY = 2;
+  }
+  Layout layout = 1;
+  bool backlight = 2; //背光
+}
