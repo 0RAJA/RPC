@@ -8,16 +8,18 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"io"
 	"log"
 )
 
 type LaptopServer struct {
 	laptopStore LaptopStore //电脑存储
 	imageStore  ImageStore  //图像存储
+	rateStore   RateStore   //评分存储
 }
 
-func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore) *LaptopServer {
-	return &LaptopServer{laptopStore: laptopStore, imageStore: imageStore}
+func NewLaptopServer(laptopStore LaptopStore, imageStore ImageStore, rateStore RateStore) *LaptopServer {
+	return &LaptopServer{laptopStore: laptopStore, imageStore: imageStore, rateStore: rateStore}
 }
 
 func (laptop *LaptopServer) LaptopStore() LaptopStore {
@@ -26,6 +28,10 @@ func (laptop *LaptopServer) LaptopStore() LaptopStore {
 
 func (laptop *LaptopServer) ImageStore() ImageStore {
 	return laptop.imageStore
+}
+
+func (laptop *LaptopServer) RateStore() RateStore {
+	return laptop.rateStore
 }
 
 // CreateLaptop 创建一个laptop
@@ -82,6 +88,7 @@ func (laptop *LaptopServer) SearchLaptop(req *pb.SearchLaptopRequest, stream pb.
 	return nil
 }
 
+// UploadLaptop 上传图片
 func (laptop *LaptopServer) UploadLaptop(stream pb.LaptopService_UploadLaptopServer) error {
 	req, err := stream.Recv() //接收第一个信息
 	if err != nil {
@@ -139,6 +146,42 @@ func (laptop *LaptopServer) UploadLaptop(stream pb.LaptopService_UploadLaptopSer
 		Size: imageSize,
 	}); err != nil {
 		return logErr(status.Errorf(codes.Internal, "can`t send and close:%v", err))
+	}
+	return nil
+}
+
+// RateLaptop 处理评分
+func (laptop *LaptopServer) RateLaptop(stream pb.LaptopService_RateLaptopServer) error {
+	for {
+		if err := contextErr(stream.Context()); err != nil {
+			return err
+		}
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return logErr(status.Errorf(codes.Unknown, "cannot receive stream request:%v", err))
+		}
+		laptopID := req.GetLaptopId()
+		score := req.GetScore()
+		log.Printf("received a laptop-score id:%v,score:%v\n", laptopID, score)
+		//检查是否存在对应laptopID
+		found, err := laptop.LaptopStore().Find(laptopID)
+		if err != nil {
+			return logErr(status.Errorf(codes.Internal, "cannot find laptop:%v", err))
+		}
+		if found == nil {
+			return logErr(status.Errorf(codes.NotFound, "can not find laptop"))
+		}
+		rating, err := laptop.RateStore().Add(laptopID, score)
+		if err != nil {
+			return logErr(status.Errorf(codes.Internal, "store error: %v", err))
+		}
+		res := &pb.RateLaptopResponse{LaptopId: laptopID, RateCount: rating.Count, AverageScore: rating.Sum / float64(rating.Count)}
+		if err := stream.Send(res); err != nil {
+			return logErr(status.Errorf(codes.Unknown, "cannot send response:%v", err))
+		}
 	}
 	return nil
 }

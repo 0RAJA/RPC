@@ -8,3 +8,5 @@ client:
 	go run cmd/client/main.go -addr="127.0.0.1:8080"
 test:
 	go test -cover ./...
+enans:
+	evans -r repl -p 8080 # evans cli

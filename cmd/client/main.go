@@ -15,6 +15,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -34,7 +35,8 @@ func main() {
 	laptopClient := pb.NewLaptopServiceClient(conn)
 	//testCreateLaptop(laptopClient)
 	//testSearchLaptop(laptopClient)
-	testUpdateImage(laptopClient)
+	//testUpdateImage(laptopClient)
+	testRateLaptop(laptopClient)
 }
 
 func testUpdateImage(laptopClient pb.LaptopServiceClient) {
@@ -150,4 +152,86 @@ func SearchLaptop(laptopClient pb.LaptopServiceClient, filter *pb.Filter) {
 		}
 		fmt.Println(res.Laptop.Id, res.Laptop.Cpu)
 	}
+}
+
+func testRateLaptop(laptopClient pb.LaptopServiceClient) {
+	n := 3
+	laptopIDs := make([]string, n)
+	for i := 0; i < 3; i++ {
+		laptop := sample.NewLaptop()
+		laptopIDs[i] = laptop.GetId()
+		CreateLaptop(laptopClient, laptop)
+	}
+	scores := make([]float64, n)
+	for {
+		fmt.Println("rate laptop y/n?")
+		var ans string
+		fmt.Scan(&ans)
+		if strings.ToLower(ans) != "y" {
+			break
+		}
+		for i := 0; i < n; i++ {
+			scores[i] = sample.RandomLaptopScore()
+		}
+		if err := rateLaptop(laptopClient, laptopIDs, scores); err != nil {
+			log.Fatalln("rateLaptop error: ", err)
+		}
+	}
+}
+
+//创建评分
+func rateLaptop(laptopClient pb.LaptopServiceClient, laptopIDs []string, scores []float64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	stream, err := laptopClient.RateLaptop(ctx)
+	if err != nil {
+		return fmt.Errorf("can't rate laptop: %v", err)
+	}
+	//接收并返回结果
+	receive := func(ctx context.Context) (<-chan *pb.RateLaptopResponse, <-chan error) {
+		errChan := make(chan error)
+		resChan := make(chan *pb.RateLaptopResponse)
+		go func() {
+			defer close(errChan)
+			defer close(resChan)
+			for {
+				res, err := stream.Recv()
+				if err == io.EOF {
+					break
+				}
+				var out1, out2 = resChan, errChan //本地版本，隐藏外界变量
+				for i := 0; i < 2; i++ {
+					select {
+					case <-ctx.Done():
+						return
+					case out1 <- res:
+						out1 = nil
+					case out2 <- err:
+						out2 = nil
+					}
+				}
+				if err != nil {
+					return
+				}
+			}
+		}()
+		return resChan, errChan
+	}
+	resStream, errStream := receive(ctx)
+	for i, laptopID := range laptopIDs {
+		req := &pb.RateLaptopRequest{LaptopId: laptopID, Score: scores[i]}
+		if err := stream.Send(req); err != nil {
+			return fmt.Errorf("send error: %v", err)
+		}
+		log.Println("send request laptopID:", req.LaptopId, "score:", req.Score)
+		if err := <-errStream; err != nil {
+			return fmt.Errorf("err received error: %v", err)
+		}
+		log.Println("received response:", <-resStream)
+	}
+	if err := stream.CloseSend(); err != nil {
+		return fmt.Errorf("can't close stream: %v", err)
+	}
+	err = <-errStream
+	return err
 }

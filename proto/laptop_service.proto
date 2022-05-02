@@ -34,8 +34,20 @@ message UploadLaptopResponse{
   uint64 size = 2; //图片大小
 }
 
+message RateLaptopRequest{
+  string laptop_id = 1; //电脑ID
+  double score = 2; //分数
+}
+
+message RateLaptopResponse{
+  string laptop_id = 1; //电脑ID
+  uint32 rate_count = 2; //评分人数
+  double average_score = 3; //平均分数
+}
+
 service LaptopService {
-  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){};//一元RPC
-  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){};//服务器流式RPC
-  rpc UploadLaptop(stream UploadLaptopRequest) returns (UploadLaptopResponse){};//客户端流式RPC
+  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){};//一元RPC 创建电脑
+  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){};//服务器流式RPC 检索电脑
+  rpc UploadLaptop(stream UploadLaptopRequest) returns (UploadLaptopResponse){};//客户端流式RPC 上传图片
+  rpc RateLaptop(stream RateLaptopRequest) returns (stream RateLaptopResponse){};//双向流式RPC 评分
 }

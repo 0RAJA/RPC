@@ -32,7 +32,7 @@ func checkLaptopSame(t *testing.T, laptop1, laptop2 *pb.Laptop) {
 func TestClientCreateLaptop(t *testing.T) {
 	t.Parallel()
 	laptopStore := service.NewInMemoryLaptopStore()
-	addr := startTestLaptopServer(t, laptopStore, nil)
+	addr := startTestLaptopServer(t, laptopStore, nil, nil)
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	require.NoError(t, err)
 	LaptopClient := pb.NewLaptopServiceClient(conn)
@@ -50,8 +50,8 @@ func TestClientCreateLaptop(t *testing.T) {
 }
 
 //启动测试服务器返回监听地址
-func startTestLaptopServer(t *testing.T, laptopStore service.LaptopStore, imageStore service.ImageStore) string {
-	laptopServer := service.NewLaptopServer(laptopStore, imageStore)
+func startTestLaptopServer(t *testing.T, laptopStore service.LaptopStore, imageStore service.ImageStore, rateStore service.RateStore) string {
+	laptopServer := service.NewLaptopServer(laptopStore, imageStore, rateStore)
 	grpcServer := grpc.NewServer()
 	pb.RegisterLaptopServiceServer(grpcServer, laptopServer)
 	listener, err := net.Listen("tcp", ":0") //随机分配IP
@@ -71,7 +71,7 @@ func TestLaptopServer_SearchLaptop(t *testing.T) {
 		MinRam:      &pb.Memory{Value: 8, Unit: pb.Memory_GIGABYTE},
 	}
 
-	addr := startTestLaptopServer(t, service.NewInMemoryLaptopStore(), nil)
+	addr := startTestLaptopServer(t, service.NewInMemoryLaptopStore(), nil, nil)
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	require.NoError(t, err)
 	laptopClient := pb.NewLaptopServiceClient(conn)
@@ -139,7 +139,7 @@ func TestClientUploadImage(t *testing.T) {
 	err := laptopStore.Save(laptop)
 	require.NoError(t, err)
 
-	serverAddr := startTestLaptopServer(t, laptopStore, imageStore)
+	serverAddr := startTestLaptopServer(t, laptopStore, imageStore, nil)
 	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
 	require.NoError(t, err)
 	laptopClient := pb.NewLaptopServiceClient(conn)
@@ -188,4 +188,46 @@ func TestClientUploadImage(t *testing.T) {
 	savedImagePath := fmt.Sprintf("%s/%s%s", testImageFolder, rev.GetId(), imageType)
 	require.FileExists(t, savedImagePath)         //判断是否存在
 	require.NoError(t, os.Remove(savedImagePath)) //最终删除
+}
+
+//测试评分
+func TestRateLaptop(t *testing.T) {
+	t.Parallel()
+
+	laptopStore := service.NewInMemoryLaptopStore()
+	rateStore := service.NewInMemoryRateStoreStore()
+	laptop := sample.NewLaptop()
+	err := laptopStore.Save(laptop)
+	require.NoError(t, err)
+
+	serverAddr := startTestLaptopServer(t, laptopStore, nil, rateStore)
+	conn, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+	require.NoError(t, err)
+	laptopClient := pb.NewLaptopServiceClient(conn)
+
+	stream, err := laptopClient.RateLaptop(context.Background())
+	require.NoError(t, err)
+	scores := []float64{8, 7.5, 10}
+	requireScores := []float64{8, 7.75, 8.5}
+
+	n := len(scores)
+	for i := 0; i < n; i++ {
+		req := &pb.RateLaptopRequest{LaptopId: laptop.Id, Score: scores[i]}
+		err := stream.Send(req)
+		require.NoError(t, err)
+	}
+	err = stream.CloseSend() //记得关闭
+	require.NoError(t, err)
+
+	for idx := 0; ; idx++ {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			require.Equal(t, idx, n) //响应次数相同
+			break
+		}
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, res.LaptopId, laptop.Id)
+		require.Equal(t, res.AverageScore, requireScores[idx])
+	}
 }

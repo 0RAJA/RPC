@@ -32,7 +32,7 @@ func TestLaptopServer_CreateLaptop(t *testing.T) {
 	laptopInvalidID.Id = "invalid-uuid"
 
 	alreadyExistsLaptop := sample.NewLaptop()
-	res, err := service.NewLaptopServer(store, nil).CreateLaptop(defaultContext, &pb.CreateLaptopRequest{Laptop: alreadyExistsLaptop})
+	res, err := service.NewLaptopServer(store, nil, nil).CreateLaptop(defaultContext, &pb.CreateLaptopRequest{Laptop: alreadyExistsLaptop})
 	require.NoError(t, err)
 	require.Equal(t, res.Id, alreadyExistsLaptop.Id)
 
@@ -74,7 +74,7 @@ func TestLaptopServer_CreateLaptop(t *testing.T) {
 		tt := tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			laptop := service.NewLaptopServer(tt.fields.Store, nil)
+			laptop := service.NewLaptopServer(tt.fields.Store, nil, nil)
 			got, err := laptop.CreateLaptop(tt.args.ctx, tt.args.req)
 			if tt.wantErr {
 				require.Error(t, err)
