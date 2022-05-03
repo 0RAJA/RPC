@@ -10,3 +10,4 @@ test:
 	go test -cover ./...
 enans:
 	evans -r repl -p 8080 # evans cli
+.PHONY: clean server client test enans

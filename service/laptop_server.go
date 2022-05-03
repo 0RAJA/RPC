@@ -61,7 +61,7 @@ func (laptop *LaptopServer) CreateLaptop(ctx context.Context,
 	err := laptop.laptopStore.Save(req.Laptop)
 	if err != nil {
 		code := codes.Internal
-		if errors.Is(err, ErrLaptopAlreadyExists) {
+		if errors.Is(err, ErrAlreadyExists) {
 			code = codes.AlreadyExists
 		}
 		return nil, status.Errorf(code, "cannot save laptop:%v", err)

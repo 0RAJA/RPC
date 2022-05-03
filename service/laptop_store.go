@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrLaptopAlreadyExists = errors.New("laptop has already exists")
+	ErrAlreadyExists = errors.New("already exists")
 )
 
 type LaptopStore interface {
@@ -31,7 +31,7 @@ func (i *InMemoryLaptopStore) Save(laptop *pb.Laptop) error {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 	if _, ok := i.data[laptop.Id]; ok {
-		return ErrLaptopAlreadyExists
+		return ErrAlreadyExists
 	}
 	other, err := deepCopy(laptop)
 	if err != nil {
