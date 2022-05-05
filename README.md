@@ -100,7 +100,202 @@ TLS在网络（HTTPS = HTTP+TLS），邮件（SMTPS = SMTP+TLS），文件传输
 
    最后，服务端也会有一个同样的操作，发「**Change Cipher Spec**」和「**Encrypted Handshake Message**」消息，如果双方都验证加密和解密没问题，那么握手正式完成。于是，就可以正常收发加密的 HTTP 请求和响应了。
 
-2. INSECURE 无安全验证
-3. SERVER-SIDE TLS 服务端证书
-4. MUTUAL SSL 客户端与服务端证书
+5. INSECURE 无安全验证
+
+6. SERVER-SIDE TLS 服务端证书
+
+   服务端采用TLS加密数据，传递证书给客户端，客户端通过CA进行校验
+
+7. MUTUAL SSL 客户端与服务端证书
+
+   双向进行加密并校验
+
+## nginx 负载均衡
+
+### 服务端
+
+客户端发送请求到代理服务器，代理服务器负责负载均衡
+
+便于部署，且适用于面向不确定使用者的环境下。
+
+但是会增加一个跳点，增加延迟。
+
+```nginx
+worker_processes  1;
+
+error_log  /var/log/nginx/error.log;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    access_log  /var/log/nginx/access.log;
+
+    # 上游
+    upstream laptop_services {
+        server 0.0.0.0:50051;
+        server 0.0.0.0:50052;
+    }
+
+    server {
+        listen       8080 http2;
+
+        location / {
+            grpc_pass grpc://laptop_services;
+        }
+    }
+}
+```
+
+一般部署情况下，grpc服务器位于安全的环境下，所以只需要让nginx服务器开启SSL/TLS加密。即将服务器私钥，服务器证书以及签署客户端证书的CA证书提供给nginx
+
+```nginx
+worker_processes  1;
+
+error_log  /var/log/nginx/error.log;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    access_log  /var/log/nginx/access.log;
+
+    # 上游
+    upstream laptop_services {
+        server 0.0.0.0:50051;
+        server 0.0.0.0:50052;
+    }
+
+    server {
+        listen       8080 ssl http2;
+        # 服务器证书和密钥
+        ssl_certificate         cert/server-cert.pem;
+        ssl_certificate_key     cert/server-key.pem;
+
+        # 签署客户端证书的CA证书
+        ssl_client_certificate  cert/ca-cert.pem;
+        # 开启客户端证书验证
+        ssl_verify_client on;
+
+        # grpcs 开启服务端TLS
+        location / {
+            grpc_pass grpcs://laptop_services;
+        }
+    }
+}
+```
+
+但是如果真的需要开启双向TLS，即nginx和grpc服务器之间的双向TLS 则需要将nginx证书传递给grpc服务器
+
+```nginx
+worker_processes  1;
+
+error_log  /var/log/nginx/error.log;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    access_log  /var/log/nginx/access.log;
+
+    # 上游
+    upstream laptop_services {
+        server 0.0.0.0:50051;
+        server 0.0.0.0:50052;
+    }
+
+    server {
+        listen       8080 ssl http2;
+        # 服务器证书和密钥
+        ssl_certificate         cert/server-cert.pem;
+        ssl_certificate_key     cert/server-key.pem;
+
+        # 签署客户端证书的CA证书
+        ssl_client_certificate  cert/ca-cert.pem;
+        # 开启客户端证书验证
+        ssl_verify_client on;
+
+        # grpcs 开启nginx服务端TLS
+        location / {
+            grpc_pass grpcs://laptop_services;
+
+            # 开启nginx TLS (可以为nginx生成指定证书) 向服务端发送TLS证书
+            grpc_ssl_certificate cert/server-cert.pem;
+            grpc_ssl_certificate_key cert/server-key.pem;
+        }
+    }
+}
+```
+
+其次实现业务分离
+
+```nginx
+worker_processes  1;
+
+error_log  /var/log/nginx/error.log;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    access_log  /var/log/nginx/access.log;
+
+    # auth上游
+    upstream auth_services {
+        server 0.0.0.0:50051;
+    }
+    # laptop上游
+    upstream laptop_services {
+        server 0.0.0.0:50052;
+    }
+
+    server {
+        listen       8080 ssl http2;
+        # 服务器证书和密钥
+        ssl_certificate         cert/server-cert.pem;
+        ssl_certificate_key     cert/server-key.pem;
+
+        # 签署客户端证书的CA证书
+        ssl_client_certificate  cert/ca-cert.pem;
+        # 开启客户端证书验证
+        ssl_verify_client on;
+
+        # grpcs 开启nginx服务端TLS
+        # 转发auth
+        location /rpc.proto.AuthService {
+            grpc_pass grpcs://auth_services;
+
+            # 开启nginx TLS (可以为nginx生成指定证书) 向服务端发送TLS证书
+            grpc_ssl_certificate cert/server-cert.pem;
+            grpc_ssl_certificate_key cert/server-key.pem;
+        }
+        # 转发laptop
+        location /rpc.proto.LaptopService {
+            grpc_pass grpcs://laptop_services;
+
+            # 开启nginx TLS (可以为nginx生成指定证书) 向服务端发送TLS证书
+            grpc_ssl_certificate cert/server-cert.pem;
+            grpc_ssl_certificate_key cert/server-key.pem;
+        }
+    }
+}
+```
+
+
+
+### 客户端
+
+客户端为每个RPC选择不同的后端服务器，通过服务注册来注册后端服务器，客户端访问服务注册来获取服务器地址。
+
+延迟低，但是实现复杂且适用于安全的场景下。
+
+
 

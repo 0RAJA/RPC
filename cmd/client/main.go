@@ -65,14 +65,22 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
 
 func main() {
 	serverAddrPtr := flag.String("addr", "127.0.0.1:8080", "the server address")
+	enableTLSPtr := flag.Bool("tls", false, "enable tls") //是否开启TLS
 	flag.Parse()
-	log.Println("dial server address: ", *serverAddrPtr)
-	tlsCredentials, err := loadTLSCredentials()
-	if err != nil {
-		log.Fatalln("can't load TLS credentials'")
+	log.Println("dial server address: ", *serverAddrPtr, " tls=", *enableTLSPtr)
+	var serviceOptions []grpc.DialOption
+	if *enableTLSPtr {
+		tlsCredentials, err := loadTLSCredentials()
+		if err != nil {
+			log.Fatalln("can't load TLS credentials'")
+		}
+		serviceOptions = append(serviceOptions, grpc.WithTransportCredentials(tlsCredentials))
+	} else {
+		serviceOptions = append(serviceOptions, grpc.WithInsecure())
 	}
+
 	//用于auth验证的连接
-	conn1, err := grpc.Dial(*serverAddrPtr, grpc.WithTransportCredentials(tlsCredentials))
+	conn1, err := grpc.Dial(*serverAddrPtr, serviceOptions...)
 	if err != nil {
 		log.Fatalln("cannot connect to server:", err)
 	}
@@ -81,8 +89,13 @@ func main() {
 	if err != nil {
 		log.Fatalln("can't create auth interceptor:", err)
 	}
-	//用于auth验证的连接
-	conn2, err := grpc.Dial(*serverAddrPtr, grpc.WithTransportCredentials(tlsCredentials), grpc.WithUnaryInterceptor(interceptor.Unary()), grpc.WithStreamInterceptor(interceptor.Stream()))
+	//注册拦截器
+	serviceOptions = append(serviceOptions,
+		grpc.WithUnaryInterceptor(interceptor.Unary()),
+		grpc.WithStreamInterceptor(interceptor.Stream()),
+	)
+	//用于laptopClient的连接
+	conn2, err := grpc.Dial(*serverAddrPtr, serviceOptions...)
 	if err != nil {
 		log.Fatalln("cannot connect to server:", err)
 	}
