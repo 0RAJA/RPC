@@ -1,12 +1,16 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"github.com/0RAJA/RPC/client"
 	"github.com/0RAJA/RPC/pb"
 	"github.com/0RAJA/RPC/sample"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"io/ioutil"
 	"log"
 	"strings"
 	"time"
@@ -33,12 +37,42 @@ func accessibleRoles() map[string]bool {
 	}
 }
 
+//加载TLS凭证
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+	//客户端TLS，需要加载客户端的证书和私钥
+	clientCert, err := tls.LoadX509KeyPair("cert/client-cert.pem", "cert/client-key.pem")
+	if err != nil {
+		return nil, err
+	}
+	//加载签署服务器的CA的证书，客户端需要验证服务器的真实性
+	//创建CA证书池并添加证书
+	certPool := x509.NewCertPool()
+	pemServerCA, err := ioutil.ReadFile("cert/ca-cert.pem")
+	if err != nil {
+		return nil, err
+	}
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+	//创建凭据并返回
+	config := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      certPool, //受信任的CA证书
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
+	return credentials.NewTLS(config), nil
+}
+
 func main() {
-	serverAddrPtr := flag.String("addr", ":8080", "the server address")
+	serverAddrPtr := flag.String("addr", "127.0.0.1:8080", "the server address")
 	flag.Parse()
 	log.Println("dial server address: ", *serverAddrPtr)
-
-	conn1, err := grpc.Dial(*serverAddrPtr, grpc.WithInsecure()) //用于auth验证的连接
+	tlsCredentials, err := loadTLSCredentials()
+	if err != nil {
+		log.Fatalln("can't load TLS credentials'")
+	}
+	//用于auth验证的连接
+	conn1, err := grpc.Dial(*serverAddrPtr, grpc.WithTransportCredentials(tlsCredentials))
 	if err != nil {
 		log.Fatalln("cannot connect to server:", err)
 	}
@@ -47,7 +81,8 @@ func main() {
 	if err != nil {
 		log.Fatalln("can't create auth interceptor:", err)
 	}
-	conn2, err := grpc.Dial(*serverAddrPtr, grpc.WithInsecure(), grpc.WithUnaryInterceptor(interceptor.Unary()), grpc.WithStreamInterceptor(interceptor.Stream())) //用于auth验证的连接
+	//用于auth验证的连接
+	conn2, err := grpc.Dial(*serverAddrPtr, grpc.WithTransportCredentials(tlsCredentials), grpc.WithUnaryInterceptor(interceptor.Unary()), grpc.WithStreamInterceptor(interceptor.Stream()))
 	if err != nil {
 		log.Fatalln("cannot connect to server:", err)
 	}
