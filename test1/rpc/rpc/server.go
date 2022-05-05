@@ -2,9 +2,11 @@ package rpc
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net"
 	"reflect"
+	"time"
 )
 
 /*
@@ -19,7 +21,7 @@ import (
 */
 
 type Server struct {
-	//地址
+	//监听地址
 	addr string
 	//map Map维护客户端传来调用函数，服务端知道去调谁
 	funcs map[string]reflect.Value
@@ -53,55 +55,62 @@ func (s *Server) Run() {
 		if err != nil {
 			continue
 		}
-		go s.Process(conn)
+		go s.process(conn)
 	}
 }
 
-func (s *Server) Process(conn net.Conn) {
+func (s *Server) process(conn net.Conn) {
 	session := NewSession(conn)
-	defer session.conn.Close()
-	b, err := session.Read()
-	if err != nil {
-		log.Println("Error reading session,err:", err)
-		return
-	}
-	rpcData := new(RPCData)
-	if err := rpcData.Decode(b); err != nil {
-		log.Println("Error decoding session,err:", err)
-		return
-	}
-	f, ok := s.funcs[rpcData.Name]
-	if !ok {
-		log.Println("Err Call Func Not Find,func name:", rpcData.Name)
-		return
-	}
-	t := f.Type()
-	if t.NumIn() != len(rpcData.Args) {
-		log.Println("Err NumIn Lens Not Equal")
-		return
-	}
-	inArgs := make([]reflect.Value, 0, len(rpcData.Args))
-	for i, arg := range rpcData.Args {
-		v := reflect.ValueOf(arg)
-		if t.In(i).Kind() != v.Type().Kind() {
-			log.Println("Err parameter Type Mismatch,need:", t.In(i).Kind(), "but:", v.Type().Kind())
+	session.conn.SetDeadline(time.Time{})
+	for {
+		b, err := session.Read()
+		if err == io.EOF {
+			log.Println("EOF received")
 			return
 		}
-		inArgs = append(inArgs, v)
+		if err != nil {
+			log.Println("Error reading session,err:", err)
+			return
+		}
+		rpcData := new(RPCData)
+		if err := rpcData.Decode(b); err != nil {
+			log.Println("Error decoding session,err:", err)
+			return
+		}
+		f, ok := s.funcs[rpcData.Name]
+		if !ok {
+			log.Println("Err Call Func Not Find,func name:", rpcData.Name)
+			return
+		}
+		//通过反射调用函数
+		t := f.Type()
+		if t.NumIn() != len(rpcData.Args) {
+			log.Println("Err NumIn Lens Not Equal")
+			return
+		}
+		inArgs := make([]reflect.Value, 0, len(rpcData.Args))
+		for i, arg := range rpcData.Args {
+			v := reflect.ValueOf(arg)
+			if t.In(i).Kind() != v.Type().Kind() {
+				log.Println("Err parameter Type Mismatch,need:", t.In(i).Kind(), "but:", v.Type().Kind())
+				return
+			}
+			inArgs = append(inArgs, v)
+		}
+		out := f.Call(inArgs)
+		outArgs := make([]interface{}, 0, len(out))
+		for _, o := range out {
+			outArgs = append(outArgs, o.Interface())
+		}
+		//响应内容
+		responseRPCData := NewRPCData(rpcData.Name, outArgs)
+		bytes, err := responseRPCData.Encode()
+		if err != nil {
+			log.Println("Encode error,err:", err)
+			return
+		}
+		if err := session.Write(bytes); err != nil {
+			log.Println("Send error,err:", err)
+		}
 	}
-	out := f.Call(inArgs)
-	outArgs := make([]interface{}, 0, len(out))
-	for _, o := range out {
-		outArgs = append(outArgs, o.Interface())
-	}
-	responRPCData := NewRPCData(rpcData.Name, outArgs)
-	bytes, err := responRPCData.Encode()
-	if err != nil {
-		log.Println("Encode error,err:", err)
-		return
-	}
-	if err := session.Write(bytes); err != nil {
-		log.Println("Send error,err:", err)
-	}
-	return
 }

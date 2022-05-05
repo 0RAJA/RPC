@@ -30,7 +30,7 @@ func queryUser(uid int) (User, error) {
 }
 
 func TestRPC(t *testing.T) {
-	//编码中有一个字段是interface{}时，要注册一下
+	//该名称将标识作为接口变量发送或接收的值的具体类型。只有将作为接口值的实现传输的类型才需要注册
 	gob.Register(User{})
 	addr := ":8080"
 	srv := NewServer(addr)

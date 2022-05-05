@@ -20,11 +20,13 @@ func NewClient(conn net.Conn) *Client {
 // var select fun xx(User)
 // cli.callRPC("selectUser",&select)
 func (c *Client) CallRPC(rpcName string, fPtr interface{}) chan error {
-	fn := reflect.ValueOf(fPtr).Elem() //获取函数原型
+	//获取函数原型
+	fn := reflect.ValueOf(fPtr).Elem()
 	if fn.Type().Kind() != reflect.Func {
 		panic(errors.New("err fPtr Not Func"))
 	}
 	errChan := make(chan error, 1)
+	//远程函数调用
 	f := func(args []reflect.Value) []reflect.Value {
 		inArgs := make([]interface{}, 0, len(args))
 		for _, arg := range args {
