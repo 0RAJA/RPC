@@ -299,7 +299,7 @@ http {
 
 gRPC网关可以通过protobuf服务定义生成代理服务器，然后将REST请求翻译为grpc请求
 
-# 安装插件
+### 安装插件
 
 ```bash
 go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
@@ -436,5 +436,39 @@ protoc --proto_path=proto --go_out=plugins=grpc:pb proto/*.proto --grpc-gateway_
 
    2, 可以使用grpc网关支持REST流式RPC
 
-### 进程间传输
+   需要同时开启gRPC服务器和REST服务器，REST服务器会将接收到的请求发送到gRPC服务器并返回结果
+
+   ```go
+   type serverConfig struct {
+   	laptopServer *service.LaptopServer
+   	authServer   *service.AuthServer
+   	enableTLS    bool
+   	listener     net.Listener
+   	maker        token.Maker
+   	grpcEndpoint string
+   }
+   
+   func runRESTServer(config *serverConfig) error {
+   	mux := runtime.NewServeMux()
+   	ctx, cancel := context.WithCancel(context.Background())
+   	defer cancel()
+   	//设置拨号选项
+   	dialOpts := []grpc.DialOption{grpc.WithInsecure()}
+   	// gRPC到REST的进程间转换 pb.RegisterAuthServiceHandlerServer
+   	// gRPC网关 RegisterAuthServiceHandlerFromEndpoint
+   	if err := pb.RegisterAuthServiceHandlerFromEndpoint(ctx, mux, config.grpcEndpoint, dialOpts); err != nil {
+   		return err
+   	}
+   	if err := pb.RegisterLaptopServiceHandlerFromEndpoint(ctx, mux, config.grpcEndpoint, dialOpts); err != nil {
+   		return err
+   	}
+   	log.Println("server port:", config.listener.Addr().String(), " tls=", config.enableTLS, "grpcEndpoint=", config.grpcEndpoint)
+   	if config.enableTLS {
+   		return http.ServeTLS(config.listener, mux, ServerCert, ServerKey)
+   	}
+   	return http.Serve(config.listener, mux)
+   }
+   ```
+
+   
 
