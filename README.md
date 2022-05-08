@@ -1,6 +1,6 @@
-# RPC学习项目
+# gRPC小项目学习总结
 
-<a href="https://www.youtube.com/watch?v=2Sm_O75I7H0">原视频</a>
+<a href="https://www.youtube.com/watch?v=2Sm_O75I7H0">教程视频</a>
 
 ## 序列化对象为二进制和Json
 
@@ -10,12 +10,83 @@
 2. 从二进制文件中读取protobuf信息
 3. 写入json文件并比较大小
 
+```go
+//json.go
+
+// ProtobufToJson 将protobuf文件转换为json
+func ProtobufToJson(message proto.Message) ([]byte, error) {
+	marshaler := protojson.MarshalOptions{
+		UseEnumNumbers:  true, //枚举值使用数字
+		EmitUnpopulated: true, //未填充字段使用默认值
+	}
+	bin, err := marshaler.Marshal(proto.MessageV2(message))
+	if err != nil {
+		return nil, err
+	}
+	return bin, nil
+}
+```
+
+```go
+//file.go
+
+//序列化对象
+
+// WriteProtobufToBinaryFile 将message对象序列化并写入二进制文件中
+func WriteProtobufToBinaryFile(message proto.Message, filename string) error {
+	data, err := proto.Marshal(message) //序列化
+	if err != nil {
+		return err
+	}
+	if err = ioutil.WriteFile(filename, data, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+```
+
+
+
 ## gRPC 的四种通信方式
 
 1. 类似REST的单请求+单回复
 2. 客户端多请求+服务端单回复
 3. 客户端单请求+服务端多回复
 4. 客户端多请求+服务端多回复
+
+```protobuf
+service LaptopService {
+  //一元RPC 创建电脑
+  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){
+    option (google.api.http) = {
+      post: "/v1/laptop/create"
+      body: "*"
+    };
+  };
+  //服务器流式RPC 检索电脑
+  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){
+    option (google.api.http) = {
+      get: "/v1/laptop/search"
+    };
+  };
+  //客户端流式RPC 上传图片
+  rpc UploadLaptop(stream UploadLaptopRequest) returns (UploadLaptopResponse){
+    option (google.api.http) = {
+      post: "/v1/laptop/upload"
+      body: "*"
+    };
+  };
+  //双向流式RPC 评分
+  rpc RateLaptop(stream RateLaptopRequest) returns (stream RateLaptopResponse){
+    option (google.api.http) = {
+      post: "/v1/laptop/rate"
+      body: "*"
+    };
+  };
+}
+```
+
+
 
 ## gRPC 反射
 
@@ -36,6 +107,100 @@ gRPC 服务器反射提供有关服务器上可公开访问的 gRPC 服务的信
 客户端拦截器是gRPC客户端在调用实际RPC方法前将调用的函数.
 
 服务器端拦截器将采用JWT来验证，客户端拦截器将添加JWT到请求。
+
+其实和go web 的token很像，都是注册到服务的前面，只不过方式不同而已。
+
+```go
+// 拦截器的编写
+const Authorization = "authorization"
+
+//权限校验
+
+type AuthInterceptor struct {
+	jwtMaker        token.Maker
+	accessibleRoles map[string][]string //RPC对应的Roles
+}
+
+func NewAuthInterceptor(jwtMaker token.Maker, accessibleRoles map[string][]string) *AuthInterceptor {
+	return &AuthInterceptor{jwtMaker: jwtMaker, accessibleRoles: accessibleRoles}
+}
+
+// Unary 一元拦截器
+func (interceptor *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		log.Println("-->unary Interceptor: ", info.FullMethod)
+		if err := interceptor.authorized(ctx, info.FullMethod); err != nil {
+			return nil, err
+		}
+		return handler(ctx, req)
+	}
+}
+
+// Stream 流式拦截器
+func (interceptor *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
+	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		log.Println("-->stream Interceptor: ", info.FullMethod)
+		if err := interceptor.authorized(ss.Context(), info.FullMethod); err != nil {
+			return err
+		}
+		return handler(srv, ss)
+	}
+}
+
+func (interceptor *AuthInterceptor) authorized(ctx context.Context, method string) error {
+	accessibleRoles, ok := interceptor.accessibleRoles[method]
+	if !ok {
+		//没有设置拦截
+		return nil
+	}
+	//从ctx中获取访问信息
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated, "metadata is not provided")
+	}
+	values := md[Authorization]
+	if len(values) == 0 {
+		return status.Errorf(codes.Unauthenticated, "authorization token is not provided")
+	}
+	//存储在第一个位置
+	accessToken := values[0]
+	payload, err := interceptor.jwtMaker.VerifyToken(accessToken)
+	if err != nil {
+		return status.Errorf(codes.Unauthenticated, "access token is not valid:%v", err)
+	}
+	for _, role := range accessibleRoles {
+		if payload.Role == role {
+			return nil
+		}
+	}
+	return status.Errorf(codes.PermissionDenied, "no permissions to access this rpc")
+}
+
+```
+
+```go
+//注册拦截器
+func runGRPCServer(config *serverConfig) error {
+	//初始化拦截器
+	interceptor := service.NewAuthInterceptor(config.maker, accessibleRoles())
+	serviceOptions := []grpc.ServerOption{
+		//安装一个一元拦截器
+		grpc.UnaryInterceptor(interceptor.Unary()),
+		//安装一个流拦截器
+		grpc.StreamInterceptor(interceptor.Stream()),
+	}
+	...
+	//配置gRPC服务器
+	grpcServer := grpc.NewServer(
+		serviceOptions...,
+	)
+	...
+	//启动gRPC服务
+	return grpcServer.Serve(config.listener)
+}
+```
+
+
 
 ## SSL/TLS
 
@@ -470,5 +635,21 @@ protoc --proto_path=proto --go_out=plugins=grpc:pb proto/*.proto --grpc-gateway_
    }
    ```
 
-   
 
+## 总结
+
+这个写的还是不是很详细，很多步骤都是直接敲了没记录下来。
+
+比如遇到的protoc版本问题，导致网上的资料和视频资料不同，这边建议去看一看https://golang2.eddycjy.com/posts/ch3/01-simple-grpc-protobuf/，里面讲的更细，而且有对应的版本，可以使用那本书中指明的版本。
+
+protoc版本问题有个链接可以分享
+
+https://www.cnblogs.com/xinliangcoder/p/15647996.html#!comments
+
+教程视频链接：
+
+https://www.youtube.com/watch?v=2Sm_O75I7H0&list=PLy_6D98if3UJd5hxWNfAqKMr15HZqF
+
+这个作者的系列教程讲解的真的非常好，学习到了非常多方面的东西，比如编码习惯，单元测试，养成书写Makefile的好习惯，宝藏博主！
+
+煎鱼大佬的书写的更加细致，之后就过一遍。
