@@ -289,13 +289,152 @@ http {
 }
 ```
 
-
-
 ### 客户端
 
 客户端为每个RPC选择不同的后端服务器，通过服务注册来注册后端服务器，客户端访问服务注册来获取服务器地址。
 
 延迟低，但是实现复杂且适用于安全的场景下。
 
+## grpc 网关
 
+gRPC网关可以通过protobuf服务定义生成代理服务器，然后将REST请求翻译为grpc请求
+
+# 安装插件
+
+```bash
+go get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger
+get -u github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.16.0
+go get google.golang.org/protobuf/cmd/protoc-gen-go
+
+# 增加google.api.http 引入第三方protobuf包
+cp -r $GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v1.16.0/third_party/googleapis/google ./proto
+```
+
+```protobuf
+//增加
+import "google/api/annotations.proto";
+//修改
+service AuthService{
+  rpc Login(LoginRequest) returns (LoginResponse){
+    option (google.api.http) = {
+      post: "/v1/auth/login"
+      body: "*"
+    };
+  }
+}
+```
+
+之后生成grpc网管和swagger文件
+
+```bash
+protoc --proto_path=proto --go_out=plugins=grpc:pb proto/*.proto --grpc-gateway_out=:pb --swagger_out=:swagger
+# --grpc-gateway_out=:pb 指定网关生成路径
+# --swagger_out=:swagger swaager文件生成路径
+```
+
+1. 进程间RPC转换
+
+   不需要运行单独的gRPC服务器，但是目前只支持一元RPC
+
+   修改main文件 增加启动REST的方式
+
+   ```go
+   type serverConfig struct {
+   	laptopServer *service.LaptopServer
+   	authServer   *service.AuthServer
+   	enableTLS    bool
+   	listener     net.Listener
+   	maker        token.Maker
+   }
+   
+   func runRESTServer(config *serverConfig) error {
+   	mux := runtime.NewServeMux()
+   	ctx, cancel := context.WithCancel(context.Background())
+   	defer cancel()
+   	//gRPC到REST的进程间转换
+   	if err := pb.RegisterAuthServiceHandlerServer(ctx, mux, config.authServer); err != nil {
+   		return err
+   	}
+   	if err := pb.RegisterLaptopServiceHandlerServer(ctx, mux, config.laptopServer); err != nil {
+   		return err
+   	}
+   	log.Println("server port:", config.listener.Addr().String(), " tls=", config.enableTLS)
+   	if config.enableTLS {
+   		return http.ServeTLS(config.listener, mux, ServerCert, ServerKey)
+   	}
+   	return http.Serve(config.listener, mux)
+   }
+   func runGRPCServer(config *serverConfig) error {
+   	//初始化拦截器
+   	interceptor := service.NewAuthInterceptor(config.maker, accessibleRoles())
+   	serviceOptions := []grpc.ServerOption{
+   		//安装一个一元拦截器
+   		grpc.UnaryInterceptor(interceptor.Unary()),
+   		//安装一个流拦截器
+   		grpc.StreamInterceptor(interceptor.Stream()),
+   	}
+   	//添加TLS凭证
+   	if config.enableTLS {
+   		tlsCredentials, err := loadTLSCredentials()
+   		if err != nil {
+   			return fmt.Errorf("can't load TLS credentials,error: %w", err)
+   		}
+   		serviceOptions = append(serviceOptions, grpc.Creds(tlsCredentials))
+   	}
+   	//配置gRPC服务器
+   	grpcServer := grpc.NewServer(
+   		serviceOptions...,
+   	)
+   	reflection.Register(grpcServer)                                 //注册反射服务
+   	pb.RegisterLaptopServiceServer(grpcServer, config.laptopServer) //注册laptop服务
+   	pb.RegisterAuthServiceServer(grpcServer, config.authServer)     //注册auth服务
+   	log.Println("server port:", config.listener.Addr().String(), " tls=", config.enableTLS)
+   	//启动gRPC服务
+   	return grpcServer.Serve(config.listener)
+   }
+   
+   func main() {
+   	portPtr := flag.Int("port", 8080, "server port")
+   	enableTLSPtr := flag.Bool("tls", false, "enable tls") //是否开启TLS
+   	serverType := flag.String("type", "grpc", "type of server(grpc/rest)")
+   	flag.Parse()
+   	//初始化持久层
+   	userStore := service.NewInMemoryUserStoreStore()
+   	maker, err := token.NewPasetoMaker([]byte(Secret))
+   	if err != nil {
+   		log.Fatalln("create maker error:", err)
+   	}
+   	//初始化用户存储
+   	if err := seedUsers(userStore); err != nil {
+   		log.Fatalln("cannot seed user store:", err)
+   	}
+   	laptopStore := service.NewInMemoryLaptopStore()
+   	imageStore := service.NewDiskImageStore("img", ImageMaxSize)
+   	scoreStore := service.NewInMemoryRateStoreStore()
+   
+   	laptopServer := service.NewLaptopServer(laptopStore, imageStore, scoreStore)
+   	authServer := service.NewAuthServer(userStore, maker)
+   	addr := fmt.Sprintf("0.0.0.0:%d", *portPtr)
+   	listener, err := net.Listen("tcp", addr)
+   	if err != nil {
+   		log.Fatalln("listener error: ", err)
+   	}
+   	config := &serverConfig{
+   		laptopServer: laptopServer,
+   		authServer:   authServer,
+   		enableTLS:    *enableTLSPtr,
+   		listener:     listener,
+   		maker:        maker,
+   	}
+   	if *serverType == "grpc" {
+   		err = runGRPCServer(config)
+   	} else {
+   		err = runRESTServer(config)
+   	}
+   }
+   ```
+
+   2, 可以使用grpc网关支持REST流式RPC
+
+### 进程间传输
 

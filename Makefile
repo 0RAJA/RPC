@@ -1,7 +1,9 @@
 gen:
-	 protoc --proto_path=proto --go_out=plugins=grpc:pb proto/*.proto
+	protoc --proto_path=proto --go_out=plugins=grpc:pb proto/*.proto --grpc-gateway_out=:pb --swagger_out=:swagger
 clean:
 	rm pb/*.go
+rest:
+	go run cmd/server/main.go -port 8081 -type rest -endpoint 0.0.0.0:8080
 server:
 	go run cmd/server/main.go -port 8080
 server1:

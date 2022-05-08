@@ -8,6 +8,7 @@ option java_multiple_files = true;
 
 import "laptop_message.proto";
 import "filter_message.proto";
+import "google/api/annotations.proto";
 
 message CreateLaptopRequest{Laptop laptop = 1;}
 
@@ -46,8 +47,31 @@ message RateLaptopResponse{
 }
 
 service LaptopService {
-  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){};//一元RPC 创建电脑
-  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){};//服务器流式RPC 检索电脑
-  rpc UploadLaptop(stream UploadLaptopRequest) returns (UploadLaptopResponse){};//客户端流式RPC 上传图片
-  rpc RateLaptop(stream RateLaptopRequest) returns (stream RateLaptopResponse){};//双向流式RPC 评分
+  //一元RPC 创建电脑
+  rpc CreateLaptop(CreateLaptopRequest) returns (CreateLaptopResponse){
+    option (google.api.http) = {
+      post: "/v1/laptop/create"
+      body: "*"
+    };
+  };
+  //服务器流式RPC 检索电脑
+  rpc SearchLaptop(SearchLaptopRequest) returns (stream SearchLaptopResponse){
+    option (google.api.http) = {
+      get: "/v1/laptop/search"
+    };
+  };
+  //客户端流式RPC 上传图片
+  rpc UploadLaptop(stream UploadLaptopRequest) returns (UploadLaptopResponse){
+    option (google.api.http) = {
+      post: "/v1/laptop/upload"
+      body: "*"
+    };
+  };
+  //双向流式RPC 评分
+  rpc RateLaptop(stream RateLaptopRequest) returns (stream RateLaptopResponse){
+    option (google.api.http) = {
+      post: "/v1/laptop/rate"
+      body: "*"
+    };
+  };
 }

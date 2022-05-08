@@ -6,6 +6,8 @@ option go_package = "pb";
 option java_package = "com.github.RPC.grpc.protobuf";
 option java_multiple_files = true;
 
+import "google/api/annotations.proto";
+
 //用于登录的请求
 
 message LoginRequest{
@@ -18,5 +20,10 @@ message LoginResponse{
 }
 
 service AuthService{
-  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Login(LoginRequest) returns (LoginResponse){
+    option (google.api.http) = {
+      post: "/v1/auth/login"
+      body: "*"
+    };
+  }
 }

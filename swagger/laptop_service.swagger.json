@@ -1,0 +1,588 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "laptop_service.proto",
+    "version": "version not set"
+  },
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/laptop/create": {
+      "post": {
+        "summary": "一元RPC 创建电脑",
+        "operationId": "LaptopService_CreateLaptop",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoCreateLaptopResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoCreateLaptopRequest"
+            }
+          }
+        ],
+        "tags": [
+          "LaptopService"
+        ]
+      }
+    },
+    "/v1/laptop/rate": {
+      "post": {
+        "summary": "双向流式RPC 评分",
+        "operationId": "LaptopService_RateLaptop",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoRateLaptopResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoRateLaptopResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRateLaptopRequest"
+            }
+          }
+        ],
+        "tags": [
+          "LaptopService"
+        ]
+      }
+    },
+    "/v1/laptop/search": {
+      "get": {
+        "summary": "服务器流式RPC 检索电脑",
+        "operationId": "LaptopService_SearchLaptop",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/protoSearchLaptopResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/runtimeStreamError"
+                }
+              },
+              "title": "Stream result of protoSearchLaptopResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "filter.max_price_usd",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "filter.min_cpu_cores",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int64"
+          },
+          {
+            "name": "filter.min_cpu_ghz",
+            "in": "query",
+            "required": false,
+            "type": "number",
+            "format": "double"
+          },
+          {
+            "name": "filter.min_ram.value",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "uint64"
+          },
+          {
+            "name": "filter.min_ram.unit",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "UNKNOWN",
+              "BIT",
+              "BYTE",
+              "KILOBYTE",
+              "MEGABYTE",
+              "GIGABYTE",
+              "TERABYTE"
+            ],
+            "default": "UNKNOWN"
+          }
+        ],
+        "tags": [
+          "LaptopService"
+        ]
+      }
+    },
+    "/v1/laptop/upload": {
+      "post": {
+        "summary": "客户端流式RPC 上传图片",
+        "operationId": "LaptopService_UploadLaptop",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoUploadLaptopResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoUploadLaptopRequest"
+            }
+          }
+        ],
+        "tags": [
+          "LaptopService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "KeyboardLayout": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "QWERTY",
+        "AZERTY"
+      ],
+      "default": "UNKNOWN"
+    },
+    "MemoryUnit": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "BIT",
+        "BYTE",
+        "KILOBYTE",
+        "MEGABYTE",
+        "GIGABYTE",
+        "TERABYTE"
+      ],
+      "default": "UNKNOWN"
+    },
+    "ScreenPanel": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "IPS",
+        "OLED"
+      ],
+      "default": "UNKNOWN",
+      "title": "屏幕面板"
+    },
+    "ScreenResolution": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "height": {
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "title": "分辨率"
+    },
+    "StorageDriver": {
+      "type": "string",
+      "enum": [
+        "UNKNOWN",
+        "HDD",
+        "SSD"
+      ],
+      "default": "UNKNOWN"
+    },
+    "protoCPU": {
+      "type": "object",
+      "properties": {
+        "brand": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "number_cores": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "number_threads": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "min_ghz": {
+          "type": "number",
+          "format": "double"
+        },
+        "max_ghz": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoCreateLaptopRequest": {
+      "type": "object",
+      "properties": {
+        "laptop": {
+          "$ref": "#/definitions/protoLaptop"
+        }
+      }
+    },
+    "protoCreateLaptopResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "protoFilter": {
+      "type": "object",
+      "properties": {
+        "max_price_usd": {
+          "type": "number",
+          "format": "double"
+        },
+        "min_cpu_cores": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "min_cpu_ghz": {
+          "type": "number",
+          "format": "double"
+        },
+        "min_ram": {
+          "$ref": "#/definitions/protoMemory"
+        }
+      },
+      "title": "寻找的computer的条件"
+    },
+    "protoGPU": {
+      "type": "object",
+      "properties": {
+        "brand": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "min_ghz": {
+          "type": "number",
+          "format": "double"
+        },
+        "max_ghz": {
+          "type": "number",
+          "format": "double"
+        },
+        "memory": {
+          "$ref": "#/definitions/protoMemory"
+        }
+      }
+    },
+    "protoImageInfo": {
+      "type": "object",
+      "properties": {
+        "laptop_id": {
+          "type": "string"
+        },
+        "image_type": {
+          "type": "string"
+        }
+      }
+    },
+    "protoKeyboard": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "$ref": "#/definitions/KeyboardLayout"
+        },
+        "backlight": {
+          "type": "boolean"
+        }
+      },
+      "title": "键盘消息"
+    },
+    "protoLaptop": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "brand": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "cpu": {
+          "$ref": "#/definitions/protoCPU"
+        },
+        "ram": {
+          "$ref": "#/definitions/protoMemory"
+        },
+        "gpus": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoGPU"
+          }
+        },
+        "storages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoStorage"
+          }
+        },
+        "screen": {
+          "$ref": "#/definitions/protoScreen"
+        },
+        "keyboard": {
+          "$ref": "#/definitions/protoKeyboard"
+        },
+        "weight_kg": {
+          "type": "number",
+          "format": "double"
+        },
+        "weight_lb": {
+          "type": "number",
+          "format": "double"
+        },
+        "PriceUsd": {
+          "type": "number",
+          "format": "double"
+        },
+        "release_year": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "update_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "protoMemory": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "unit": {
+          "$ref": "#/definitions/MemoryUnit"
+        }
+      },
+      "title": "内存消息"
+    },
+    "protoRateLaptopRequest": {
+      "type": "object",
+      "properties": {
+        "laptop_id": {
+          "type": "string"
+        },
+        "score": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoRateLaptopResponse": {
+      "type": "object",
+      "properties": {
+        "laptop_id": {
+          "type": "string"
+        },
+        "rate_count": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "average_score": {
+          "type": "number",
+          "format": "double"
+        }
+      }
+    },
+    "protoScreen": {
+      "type": "object",
+      "properties": {
+        "size_inch": {
+          "type": "number",
+          "format": "float"
+        },
+        "resolution": {
+          "$ref": "#/definitions/ScreenResolution"
+        },
+        "panel": {
+          "$ref": "#/definitions/ScreenPanel"
+        },
+        "multiTouch": {
+          "type": "boolean"
+        }
+      }
+    },
+    "protoSearchLaptopResponse": {
+      "type": "object",
+      "properties": {
+        "laptop": {
+          "$ref": "#/definitions/protoLaptop"
+        }
+      }
+    },
+    "protoStorage": {
+      "type": "object",
+      "properties": {
+        "driver": {
+          "$ref": "#/definitions/StorageDriver"
+        },
+        "memory": {
+          "$ref": "#/definitions/protoMemory"
+        }
+      },
+      "title": "存储消息"
+    },
+    "protoUploadLaptopRequest": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/protoImageInfo"
+        },
+        "chunk_data": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "protoUploadLaptopResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "string"
+        },
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}
