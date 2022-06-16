@@ -1,11 +1,12 @@
 package serializer
 
 import (
+	"testing"
+
 	"github.com/0RAJA/RPC/pb"
 	"github.com/0RAJA/RPC/sample"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var (

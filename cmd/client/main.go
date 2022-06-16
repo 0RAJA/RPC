@@ -5,15 +5,16 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"strings"
+	"time"
+
 	"github.com/0RAJA/RPC/client"
 	"github.com/0RAJA/RPC/pb"
 	"github.com/0RAJA/RPC/sample"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"io/ioutil"
-	"log"
-	"strings"
-	"time"
 )
 
 func init() {

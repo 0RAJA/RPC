@@ -5,6 +5,11 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"net"
+	"net/http"
+
 	"github.com/0RAJA/RPC/pb"
 	"github.com/0RAJA/RPC/pkg/token"
 	"github.com/0RAJA/RPC/service"
@@ -13,10 +18,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	"io/ioutil"
-	"log"
-	"net"
-	"net/http"
 )
 
 const (

@@ -3,10 +3,11 @@ package rpc
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // 定义用户对象

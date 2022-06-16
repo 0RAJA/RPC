@@ -1,11 +1,12 @@
 package main
 
 import (
+	"io"
+	"log"
+
 	pb "github.com/0RAJA/RPC/test1/proto"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"io"
-	"log"
 )
 
 func handleErr(err error) {

@@ -3,9 +3,10 @@ package service
 import (
 	"bytes"
 	"fmt"
-	"github.com/google/uuid"
 	"os"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type ImageStore interface {

@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
+	"log"
+
 	"github.com/0RAJA/RPC/test1/rpc/rpc"
 	ss "github.com/0RAJA/RPC/test1/rpc/rpc/cmd/struct"
-	"log"
 )
 
 func SayHello(user ss.User) string {

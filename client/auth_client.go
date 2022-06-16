@@ -1,10 +1,11 @@
 package client
 
 import (
+	"time"
+
 	"github.com/0RAJA/RPC/pb"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"time"
 )
 
 // AuthClient 调用身份验证服务

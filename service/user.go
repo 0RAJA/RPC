@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+
 	"golang.org/x/crypto/bcrypt"
 )
 

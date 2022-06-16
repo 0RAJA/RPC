@@ -1,10 +1,11 @@
 package rpc
 
 import (
-	"github.com/stretchr/testify/require"
 	"net"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSession_ReadWriter(t *testing.T) {

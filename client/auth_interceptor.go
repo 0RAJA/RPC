@@ -2,10 +2,11 @@ package client
 
 import (
 	"context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"log"
 	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 const Authorization = "authorization"

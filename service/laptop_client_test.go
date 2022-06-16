@@ -4,13 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/0RAJA/RPC/pb"
-	"github.com/0RAJA/RPC/sample"
-	"github.com/0RAJA/RPC/serializer"
-	"github.com/0RAJA/RPC/service"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net"
@@ -18,6 +11,14 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/0RAJA/RPC/pb"
+	"github.com/0RAJA/RPC/sample"
+	"github.com/0RAJA/RPC/serializer"
+	"github.com/0RAJA/RPC/service"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 func checkLaptopSame(t *testing.T, laptop1, laptop2 *pb.Laptop) {

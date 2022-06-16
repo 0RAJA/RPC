@@ -1,8 +1,9 @@
 package serializer
 
 import (
-	"github.com/golang/protobuf/proto"
 	"io/ioutil"
+
+	"github.com/golang/protobuf/proto"
 )
 
 //序列化对象

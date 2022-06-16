@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"flag"
-	pb "github.com/0RAJA/RPC/test1/proto"
-	"google.golang.org/grpc"
 	"io"
 	"log"
 	"net"
+
+	pb "github.com/0RAJA/RPC/test1/proto"
+	"google.golang.org/grpc"
 )
 
 var port string

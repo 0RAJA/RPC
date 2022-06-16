@@ -3,10 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"sync"
+
 	"github.com/0RAJA/RPC/pb"
 	"github.com/jinzhu/copier"
 	"golang.org/x/net/context"
-	"sync"
 )
 
 var (

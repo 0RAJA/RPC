@@ -5,9 +5,10 @@ package pb
 
 import (
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/golang/protobuf/proto"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.

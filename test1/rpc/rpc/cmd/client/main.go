@@ -3,10 +3,11 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/0RAJA/RPC/test1/rpc/rpc"
-	ss "github.com/0RAJA/RPC/test1/rpc/rpc/cmd/struct"
 	"log"
 	"net"
+
+	"github.com/0RAJA/RPC/test1/rpc/rpc"
+	ss "github.com/0RAJA/RPC/test1/rpc/rpc/cmd/struct"
 )
 
 func main() {

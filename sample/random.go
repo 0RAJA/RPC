@@ -1,10 +1,11 @@
 package sample
 
 import (
-	"github.com/0RAJA/RPC/pb"
-	"github.com/google/uuid"
 	"math/rand"
 	"time"
+
+	"github.com/0RAJA/RPC/pb"
+	"github.com/google/uuid"
 )
 
 func init() {

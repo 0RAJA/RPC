@@ -1,6 +1,8 @@
 package service_test
 
 import (
+	"testing"
+
 	"github.com/0RAJA/RPC/pb"
 	"github.com/0RAJA/RPC/sample"
 	"github.com/0RAJA/RPC/service"
@@ -8,7 +10,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"testing"
 )
 
 //测试
