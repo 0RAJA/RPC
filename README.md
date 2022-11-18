@@ -208,7 +208,7 @@ func runGRPCServer(config *serverConfig) error {
 
 TLS 是传输层安全协议，它用于实现客户端和服务器之间的加密通信。SSL是TLS的前身。
 
-![image-20220504204623342](https://gitee.com/ORaja/picture/raw/master/img/image-20220504204623342.png)
+![image-20220504204623342](https://api.onedrive.com/v1.0/shares/s!AtZ5iupAGnvylF0PKj3DPYiVOEyy/root/content)
 
 TLS在网络（HTTPS = HTTP+TLS），邮件（SMTPS = SMTP+TLS），文件传输（FTPS = FTP+TLS）等中使用。
 
